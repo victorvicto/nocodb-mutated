@@ -37,12 +37,12 @@ const rowColorInfo = computed(() => {
       'rounded-r-[4px] !border-l-0 mr-1': position === 'rightRounded',
       'rounded-[4px] ml-0.8 mr-1': position === 'rounded',
       'rounded-none !border-x-0': position === 'none',
-      'bg-nc-maroon-50': props.color === 'maroon',
-      'bg-nc-blue-50': props.color === 'blue',
-      'bg-nc-green-50': props.color === 'green',
-      'bg-nc-yellow-50': props.color === 'yellow',
-      'bg-nc-pink-50': props.color === 'pink',
-      'bg-nc-purple-50': props.color === 'purple',
+      'bg-nc-maroon-50': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'maroon',
+      'bg-nc-blue-50': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'blue',
+      'bg-nc-green-50': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'green',
+      'bg-nc-yellow-50': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'yellow',
+      'bg-nc-pink-50': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'pink',
+      'bg-nc-purple-50': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'purple',
       'bg-nc-bg-default border-nc-border-gray-dark': color === 'gray',
       '!bg-nc-bg-gray-light': hover || dragging,
     }"
@@ -59,12 +59,12 @@ const rowColorInfo = computed(() => {
     <div
       v-if="position === 'leftRounded' || position === 'rounded'"
       :class="{
-        'bg-nc-maroon-500': props.color === 'maroon',
-        'bg-nc-blue-500': props.color === 'blue',
-        'bg-nc-green-500': props.color === 'green',
-        'bg-nc-yellow-500': props.color === 'yellow',
-        'bg-nc-pink-500': props.color === 'pink',
-        'bg-nc-purple-500': props.color === 'purple',
+        'bg-nc-maroon-500': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'maroon',
+        'bg-nc-blue-500': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'blue',
+        'bg-nc-green-500': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'green',
+        'bg-nc-yellow-500': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'yellow',
+        'bg-nc-pink-500': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'pink',
+        'bg-nc-purple-500': (props.row?.color ?? props.row?.fields?.color ?? props.color) === 'purple',
         'bg-nc-gray-900': color === 'gray',
       }"
       class="w-1 min-h-6.5"
