@@ -1,5 +1,9 @@
 .git
 node_modules
-pnpm-store
+.pnpm-store
+.pnpm
+dist
 tests
+.vscode
 *.log
+.idea
