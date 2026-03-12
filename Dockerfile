@@ -33,7 +33,9 @@ RUN pnpm install
 RUN pnpm --filter nc-gui build
 
 # build backend bundle
-RUN pnpm --filter nocodb build
+RUN pnpm --filter nocodb build \
+ && echo "===== BUILD OUTPUT =====" \
+ && ls -lh packages/nocodb/dist
 
 # install production deps only
 RUN pnpm install --prod
