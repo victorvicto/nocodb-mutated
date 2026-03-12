@@ -1,5 +1,6 @@
-RUN curl -L https://github.com/benbjohnson/litestream/releases/latest/download/litestream-linux-amd64 \
-  -o /usr/local/bin/litestream \
+RUN curl -L https://github.com/benbjohnson/litestream/releases/download/v0.5.8/litestream-0.5.8-linux-x86_64.deb \
+  -o /usr/local/bin/ \
+  && dpkg -i /usr/local/bin/litestream-0.5.8-linux-x86_64.deb \
   && chmod +x /usr/local/bin/litestream
 
 
