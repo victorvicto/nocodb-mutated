@@ -1,6 +1,5 @@
 # ---------- litestream builder ----------
 FROM golang:bullseye AS lt-builder
-
 WORKDIR /usr/src
 
 RUN apt-get update && apt-get install -y git make gcc libc-dev \
@@ -15,54 +14,74 @@ RUN cp $GOPATH/bin/litestream /usr/src/lt
 FROM node:22-slim AS builder
 WORKDIR /usr/src/app
 
+# Build-time dependencies (node native build toolchain + git)
 RUN apt-get update && apt-get install -y \
   python3 \
   python-is-python3 \
   make \
   g++ \
   git \
- && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/*
 
+# Ensure pnpm available
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
+# Copy entire repo (build context must be repo root)
 COPY . .
 
-RUN pnpm install
+# Install workspace deps (full install)
+RUN pnpm install --frozen-lockfile
 
-# build frontend (nc-gui)
+# Build frontend (nc-gui)
 RUN pnpm --filter nc-gui build
 
-# build backend bundle
-RUN pnpm --filter nocodb build \
- && echo "===== BUILD OUTPUT =====" \
- && ls -lh packages/nocodb/dist
+# Build backend bundle (uses rspack as defined in packages/nocodb/package.json)
+RUN pnpm --filter nocodb build
 
-# install production deps only
-RUN pnpm install --prod
+# Seeing what has been created for eventual further debugging
+RUN echo "=== listing packages/nocodb ===" && ls -lh packages/nocodb && echo "=== listing dist ===" && ls -lh packages/nocodb/dist
+
+# Verify expected artifact exists (fail early if missing)
+RUN test -f packages/nocodb/dist/bundle.js \
+  && echo "Backend bundle present: packages/nocodb/dist/bundle.js"
+
+# Create a production-only hoisted node_modules layout
+# Write hoisted linker to .npmrc to match upstream expectations
+RUN echo "node-linker=hoisted" > .npmrc \
+  && pnpm install --prod --shamefully-hoist
 
 
 # ---------- runtime ----------
-FROM node:22-slim
-
+FROM node:22-slim AS runtime
 WORKDIR /usr/src/app
 
-ENV NODE_ENV=production
-ENV PORT=8080
+ENV NODE_ENV=production \
+    PORT=8080 \
+    NC_DOCKER=0.6 \
+    NC_TOOL_DIR=/usr/app/data/
 
+# Runtime deps used by upstream image
 RUN apt-get update && apt-get install -y dumb-init curl wget \
- && rm -rf /var/lib/apt/lists/*
+  && curl -L "https://github.com/TomWright/dasel/releases/download/v2.8.1/dasel_linux_$(dpkg --print-architecture)" -o /usr/local/bin/dasel \
+  && chmod +x /usr/local/bin/dasel \
+  && rm -rf /var/lib/apt/lists/*
 
-# litestream
+# Copy litestream binary from lt-builder
 COPY --from=lt-builder /usr/src/lt /usr/local/bin/litestream
 
-# compiled backend + runtime files
-COPY --from=builder /usr/src/app/packages/nocodb /usr/src/app/packages/nocodb
+# Copy the built backend runtime files from builder
+# The runtime will expect /usr/src/app/dist and /usr/src/app/docker
+COPY --from=builder /usr/src/app/packages/nocodb/dist ./dist
+COPY --from=builder /usr/src/app/packages/nocodb/docker ./docker
+COPY --from=builder /usr/src/app/packages/nocodb/package.json ./package.json
 
-# docker entry files
-COPY docker /usr/src/app/docker
+# Copy hoisted production node_modules
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/.npmrc ./.npmrc
 
+# Expose port and set entrypoint/cmd to match upstream
 EXPOSE 8080
 
-ENTRYPOINT ["/usr/bin/dumb-init","--"]
+ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-CMD ["node","docker/main"]
+CMD ["node", "docker/main"]
