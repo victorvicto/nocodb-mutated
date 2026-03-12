@@ -16,6 +16,7 @@ RUN apt-get update && apt-get install -y \
 # Downloading and depackaging litestream
 RUN wget https://github.com/benbjohnson/litestream/releases/download/v0.5.8/litestream-0.5.8-linux-x86_64.deb -P /usr/local/bin
 RUN dpkg -i /usr/local/bin/litestream-0.5.8-linux-x86_64.deb
+RUN dpkg -L litestream
 RUN ls -lh /usr/local/bin/
 RUN chmod +x /usr/local/bin/litestream
 
