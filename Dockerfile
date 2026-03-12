@@ -1,13 +1,6 @@
-# ---------- litestream builder ----------
-FROM golang:bullseye AS lt-builder
-WORKDIR /usr/src
-
-RUN apt-get update && apt-get install -y git make gcc libc-dev \
- && rm -rf /var/lib/apt/lists/*
-
-RUN git clone https://github.com/benbjohnson/litestream.git
-RUN cd litestream && go install ./cmd/litestream
-RUN cp $GOPATH/bin/litestream /usr/src/lt
+RUN curl -L https://github.com/benbjohnson/litestream/releases/latest/download/litestream-linux-amd64 \
+  -o /usr/local/bin/litestream \
+  && chmod +x /usr/local/bin/litestream
 
 
 # ---------- app builder ----------
@@ -36,7 +29,8 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter nc-gui build
 
 # Build backend bundle (uses rspack as defined in packages/nocodb/package.json)
-RUN pnpm --filter nocodb build
+# RUN pnpm --filter nocodb build
+EE="true-xc-test" pnpm --filter nocodb build
 
 # Seeing what has been created for eventual further debugging
 RUN echo "=== listing packages/nocodb ===" && ls -lh packages/nocodb && echo "=== listing dist ===" && ls -lh packages/nocodb/dist
