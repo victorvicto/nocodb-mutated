@@ -30,12 +30,8 @@ COPY . .
 # Install workspace deps (full install)
 RUN pnpm install --frozen-lockfile
 
-# Build frontend (nc-gui)
-RUN pnpm --filter nc-gui build
-
-# Build backend bundle (uses rspack as defined in packages/nocodb/package.json)
-RUN pnpm --filter nocodb build
-# EE="true-xc-test" pnpm --filter nocodb build
+# Building all packages
+RUN pnpm -r build
 
 # Seeing what has been created for eventual further debugging
 RUN echo "=== listing packages/nocodb ===" && ls -lh packages/nocodb && echo "=== listing dist ===" && ls -lh packages/nocodb/dist
@@ -67,6 +63,7 @@ RUN apt-get update && apt-get install -y dumb-init curl wget \
 
 # Copy litestream binary from lt-builder
 # COPY --from=lt-builder /usr/src/lt /usr/local/bin/litestream
+COPY --from=builder /usr/local/bin/litestream /usr/local/bin/litestream
 
 # Copy the built backend runtime files from builder
 # The runtime will expect /usr/src/app/dist and /usr/src/app/docker
