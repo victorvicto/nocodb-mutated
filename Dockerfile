@@ -31,8 +31,8 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter nc-gui build
 
 # Build backend bundle (uses rspack as defined in packages/nocodb/package.json)
-# RUN pnpm --filter nocodb build
-EE="true-xc-test" pnpm --filter nocodb build
+RUN pnpm --filter nocodb build
+# EE="true-xc-test" pnpm --filter nocodb build
 
 # Seeing what has been created for eventual further debugging
 RUN echo "=== listing packages/nocodb ===" && ls -lh packages/nocodb && echo "=== listing dist ===" && ls -lh packages/nocodb/dist
