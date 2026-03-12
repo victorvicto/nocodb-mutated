@@ -63,7 +63,7 @@ RUN apt-get update && apt-get install -y dumb-init curl wget \
   && rm -rf /var/lib/apt/lists/*
 
 # Copy litestream binary from lt-builder
-COPY --from=lt-builder /usr/src/lt /usr/local/bin/litestream
+# COPY --from=lt-builder /usr/src/lt /usr/local/bin/litestream
 
 # Copy the built backend runtime files from builder
 # The runtime will expect /usr/src/app/dist and /usr/src/app/docker
