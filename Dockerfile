@@ -3,11 +3,10 @@ FROM node:22-slim AS builder
 WORKDIR /usr/src/app
 
 # Downloading and depackaging litestream
-RUN curl -L https://github.com/benbjohnson/litestream/releases/download/v0.5.8/litestream-0.5.8-linux-x86_64.deb \
-  -o /usr/local/bin/ \
-  && dpkg -i /usr/local/bin/litestream-0.5.8-linux-x86_64.deb \
-  && ls-lh /usr/local/bin/ \
-  && chmod +x /usr/local/bin/litestream
+RUN wget https://github.com/benbjohnson/litestream/releases/download/v0.5.8/litestream-0.5.8-linux-x86_64.deb -o /usr/local/bin/
+RUN dpkg -i /usr/local/bin/litestream-0.5.8-linux-x86_64.deb
+RUN ls-lh /usr/local/bin/
+RUN chmod +x /usr/local/bin/litestream
 
 # Build-time dependencies (node native build toolchain + git)
 RUN apt-get update && apt-get install -y \
