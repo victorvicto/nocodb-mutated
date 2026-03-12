@@ -1,29 +1,45 @@
-FROM node:22-slim AS builder
+# ---------- litestream builder ----------
+FROM golang:bullseye AS lt-builder
 
+WORKDIR /usr/src
+
+RUN apt-get update && apt-get install -y git make gcc libc-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/benbjohnson/litestream.git
+RUN cd litestream && go install ./cmd/litestream
+RUN cp $GOPATH/bin/litestream /usr/src/lt
+
+
+# ---------- app builder ----------
+FROM node:22-slim AS builder
 WORKDIR /usr/src/app
 
-# install build tools required by native deps
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python-is-python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
+  python3 \
+  python-is-python3 \
+  make \
+  g++ \
+  git \
+ && rm -rf /var/lib/apt/lists/*
 
-# enable pnpm (same as upstream)
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
-# copy full repository
 COPY . .
 
-# install dependencies for the workspace
 RUN pnpm install
 
-# build all workspace packages (frontend + backend)
-RUN pnpm build
+# build frontend (nc-gui)
+RUN pnpm --filter nc-gui build
 
-# -------- runtime image --------
+# build backend bundle
+RUN pnpm --filter nocodb build
 
+# install production deps only
+RUN pnpm install --prod
+
+
+# ---------- runtime ----------
 FROM node:22-slim
 
 WORKDIR /usr/src/app
@@ -31,9 +47,20 @@ WORKDIR /usr/src/app
 ENV NODE_ENV=production
 ENV PORT=8080
 
-# copy built workspace
-COPY --from=builder /usr/src/app /usr/src/app
+RUN apt-get update && apt-get install -y dumb-init curl wget \
+ && rm -rf /var/lib/apt/lists/*
+
+# litestream
+COPY --from=lt-builder /usr/src/lt /usr/local/bin/litestream
+
+# compiled backend + runtime files
+COPY --from=builder /usr/src/app/packages/nocodb /usr/src/app/packages/nocodb
+
+# docker entry files
+COPY docker /usr/src/app/docker
 
 EXPOSE 8080
 
-CMD ["pnpm","--filter","nocodb","start"]
+ENTRYPOINT ["/usr/bin/dumb-init","--"]
+
+CMD ["node","docker/main"]
