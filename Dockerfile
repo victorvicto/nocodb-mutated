@@ -3,19 +3,19 @@
 ###########
 FROM golang:bullseye AS lt-builder
 
-WORKDIR /usr/src
+WORKDIR /usr/src/
 
 RUN apt-get update && apt-get install -y \
     git \
     make \
     gcc \
     libc-dev \
-    && rm -rf /var/lib/apt/lists/*
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/benbjohnson/litestream.git
+# build litestream
+RUN git clone https://github.com/benbjohnson/litestream.git litestream
 RUN cd litestream && go install ./cmd/litestream
-
-RUN cp $(go env GOPATH)/bin/litestream /usr/local/bin/litestream
+RUN cp $GOPATH/bin/litestream /usr/src/lt
 
 
 ###########
