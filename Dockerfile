@@ -92,7 +92,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # litestream
-COPY --from=lt-builder /usr/local/bin/litestream /usr/local/bin/litestream
+COPY --from=lt-builder /usr/src/lt /usr/local/bin/litestream
 COPY packages/nocodb/docker/litestream.yml /etc/litestream.yml
 
 # built application
