@@ -48,7 +48,7 @@ COPY packages ./packages
 RUN pnpm install --frozen-lockfile
 
 # build dependencies required by nocodb runtime
-RUN pnpm --filter nocodb-sdk build
+RUN pnpm --filter nocodb-sdk run build:main
 RUN pnpm --filter nocodb-sdk-v2 build
 RUN pnpm --filter nc-gui build
 
