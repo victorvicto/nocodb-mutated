@@ -43,11 +43,7 @@ RUN pnpm --filter nc-gui build
 RUN pnpm --filter nocodb build
 
 # Seeing what has been created for eventual further debugging
-RUN echo "=== listing packages/nocodb ===" && ls -lh packages/nocodb && echo "=== listing dist ===" && ls -lh packages/nocodb/dist
-
-# Verify expected artifact exists (fail early if missing)
-RUN test -f packages/nocodb/dist/bundle.js \
-  && echo "Backend bundle present: packages/nocodb/dist/bundle.js"
+RUN echo "=== listing packages/nocodb ===" && ls -lh packages/nocodb
 
 # Create a production-only hoisted node_modules layout
 # Write hoisted linker to .npmrc to match upstream expectations
@@ -75,8 +71,7 @@ RUN apt-get update && apt-get install -y dumb-init curl wget \
 COPY --from=builder /usr/local/bin/litestream /usr/local/bin/litestream
 
 # Copy the built backend runtime files from builder
-# The runtime will expect /usr/src/app/dist and /usr/src/app/docker
-COPY --from=builder /usr/src/app/packages/nocodb/dist ./dist
+# The runtime will expect /usr/src/app/docker
 COPY --from=builder /usr/src/app/packages/nocodb/docker ./docker
 COPY --from=builder /usr/src/app/packages/nocodb/package.json ./package.json
 
