@@ -1,87 +1,110 @@
-# ---------- app builder ----------
+###########
+# Litestream Builder
+###########
+FROM golang:1.25-bullseye AS lt-builder
+
+WORKDIR /usr/src
+
+RUN apt-get update && apt-get install -y \
+    git \
+    make \
+    gcc \
+    libc-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/benbjohnson/litestream.git
+RUN cd litestream && go install ./cmd/litestream
+
+RUN cp $(go env GOPATH)/bin/litestream /usr/local/bin/litestream
+
+
+###########
+# Node Builder
+###########
 FROM node:22-slim AS builder
+
 WORKDIR /usr/src/app
 
-ENV NODE_OPTIONS="--max_old_space_size=4096"
-
-# Build-time dependencies (node native build toolchain + git)
 RUN apt-get update && apt-get install -y \
-  python3 \
-  python-is-python3 \
-  make \
-  g++ \
-  git \
-  wget \
-  dpkg \
-  && rm -rf /var/lib/apt/lists/*
+    python3 \
+    python-is-python3 \
+    make \
+    g++ \
+    libssl-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-# Downloading and depackaging litestream
-RUN wget https://github.com/benbjohnson/litestream/releases/download/v0.5.8/litestream-0.5.8-linux-x86_64.deb -P /usr/local/bin
-RUN dpkg -i /usr/local/bin/litestream-0.5.8-linux-x86_64.deb
-RUN dpkg -L litestream
-RUN cp /usr/bin/litestream /usr/local/bin/litestream
-RUN ls -lh /usr/local/bin/
-RUN chmod +x /usr/local/bin/litestream
-
-# Ensure pnpm available
+# pnpm
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
-# Copy entire repo (build context must be repo root)
-COPY . .
+# workspace config
+COPY pnpm-workspace.yaml ./
+COPY package.json pnpm-lock.yaml ./
 
-# Install workspace deps (full install)
-# RUN pnpm install --frozen-lockfile
+# packages
+COPY packages ./packages
 
-# Building all packages
-# RUN pnpm -r build
+# install dependencies
+RUN pnpm install --frozen-lockfile
 
-RUN pnpm install --frozen-lockfile --ignore-scripts
-
+# build dependencies required by nocodb runtime
 RUN pnpm --filter nocodb-sdk build
 RUN pnpm --filter nocodb-sdk-v2 build
 RUN pnpm --filter nc-gui build
+
+# build nocodb backend bundle
 RUN pnpm --filter nocodb build
 
-# Seeing what has been created for eventual further debugging
-RUN echo "=== listing packages/nocodb ===" && ls -lh packages/nocodb
+# copy start script
+RUN mkdir -p /usr/src/appEntry
+RUN cp packages/nocodb/docker/start-litestream.sh /usr/src/appEntry/start.sh
+RUN chmod +x /usr/src/appEntry/start.sh
 
-# Create a production-only hoisted node_modules layout
-# Write hoisted linker to .npmrc to match upstream expectations
-RUN echo "node-linker=hoisted" > .npmrc \
-  && pnpm install --prod --shamefully-hoist
+# reduce node_modules size
+RUN pnpm prune --prod
 
 
-# ---------- runtime ----------
-FROM node:22-slim AS runtime
+##########
+# Runner
+##########
+FROM node:22-slim
+
 WORKDIR /usr/src/app
 
-ENV NODE_ENV=production \
-    PORT=8080 \
-    NC_DOCKER=0.6 \
-    NC_TOOL_DIR=/usr/app/data/
+ENV \
+  LITESTREAM_S3_SKIP_VERIFY=false \
+  LITESTREAM_RETENTION=1440h \
+  LITESTREAM_RETENTION_CHECK_INTERVAL=72h \
+  LITESTREAM_SNAPSHOT_INTERVAL=24h \
+  LITESTREAM_SYNC_INTERVAL=60s \
+  NC_DOCKER=0.6 \
+  NC_TOOL_DIR=/usr/app/data/ \
+  NODE_ENV=production \
+  PORT=8080
 
-# Runtime deps used by upstream image
-RUN apt-get update && apt-get install -y dumb-init curl wget \
-  && curl -L "https://github.com/TomWright/dasel/releases/download/v2.8.1/dasel_linux_$(dpkg --print-architecture)" -o /usr/local/bin/dasel \
-  && chmod +x /usr/local/bin/dasel \
-  && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y \
+    dumb-init \
+    curl \
+    wget \
+    && curl -L "https://github.com/TomWright/dasel/releases/download/v2.8.1/dasel_linux_$(dpkg --print-architecture)" \
+       -o /usr/local/bin/dasel \
+    && chmod +x /usr/local/bin/dasel \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy litestream binary from lt-builder
-# COPY --from=lt-builder /usr/src/lt /usr/local/bin/litestream
-COPY --from=builder /usr/local/bin/litestream /usr/local/bin/litestream
+# litestream
+COPY --from=lt-builder /usr/local/bin/litestream /usr/local/bin/litestream
+COPY packages/nocodb/docker/litestream.yml /etc/litestream.yml
 
-# Copy the built backend runtime files from builder
-# The runtime will expect /usr/src/app/docker
-COPY --from=builder /usr/src/app/packages/nocodb/docker ./docker
-COPY --from=builder /usr/src/app/packages/nocodb/package.json ./package.json
+# built application
+COPY --from=builder /usr/src/app/packages/nocodb/docker /usr/src/app/docker
+COPY --from=builder /usr/src/app/node_modules /usr/src/app/node_modules
+COPY --from=builder /usr/src/app/packages/nocodb/package.json /usr/src/app/package.json
 
-# Copy hoisted production node_modules
-COPY --from=builder /usr/src/app/node_modules ./node_modules
-COPY --from=builder /usr/src/app/.npmrc ./.npmrc
+# startup script
+COPY --from=builder /usr/src/appEntry /usr/src/appEntry
 
-# Expose port and set entrypoint/cmd to match upstream
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-CMD ["node", "docker/main"]
+CMD ["/usr/src/appEntry/start.sh"]
