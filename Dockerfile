@@ -1,7 +1,7 @@
 ###########
 # Litestream Builder
 ###########
-FROM golang:bullseye AS lt-builder
+FROM golang:1.25 AS lt-builder
 
 WORKDIR /usr/src/
 
