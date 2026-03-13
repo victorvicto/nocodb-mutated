@@ -2,6 +2,8 @@
 FROM node:22-slim AS builder
 WORKDIR /usr/src/app
 
+ENV NODE_OPTIONS="--max_old_space_size=4096"
+
 # Build-time dependencies (node native build toolchain + git)
 RUN apt-get update && apt-get install -y \
   python3 \
@@ -28,10 +30,17 @@ RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 COPY . .
 
 # Install workspace deps (full install)
-RUN pnpm install --frozen-lockfile
+# RUN pnpm install --frozen-lockfile
 
 # Building all packages
-RUN pnpm -r build
+# RUN pnpm -r build
+
+RUN pnpm install --frozen-lockfile --ignore-scripts
+
+RUN pnpm --filter nocodb-sdk build
+RUN pnpm --filter nocodb-sdk-v2 build
+RUN pnpm --filter nc-gui build
+RUN pnpm --filter nocodb build
 
 # Seeing what has been created for eventual further debugging
 RUN echo "=== listing packages/nocodb ===" && ls -lh packages/nocodb && echo "=== listing dist ===" && ls -lh packages/nocodb/dist
