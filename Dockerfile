@@ -17,7 +17,10 @@ RUN apt-get update && apt-get install -y python3 python-is-python3 make g++ libs
 RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
 # 1. Copy workspace metadata
-COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+#COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml .npmrc tsconfig.json lerna.json ./
+# Copy API definitions if they exist (used by SDK generator)
+COPY APIs.json* ./
 COPY scripts ./scripts
 COPY packages ./packages
 
