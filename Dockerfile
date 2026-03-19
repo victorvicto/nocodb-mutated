@@ -18,6 +18,7 @@ RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
 # 1. Copy workspace metadata
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
+COPY scripts ./scripts
 COPY packages ./packages
 
 # 2. Install all dependencies (needed for build)
