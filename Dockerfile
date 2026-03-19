@@ -38,12 +38,16 @@ RUN pnpm --filter nc-gui build
 RUN pnpm --filter nocodb build
 
 # 6. THE DEPLOY STEP
-# This creates a standalone production folder for the backend at /usr/src/deploy
 RUN pnpm --filter nocodb --prod deploy /usr/src/deploy
 
-# 7. Move built GUI files into the backend's public folder
-# NocoDB serves the frontend from its own 'public' or 'static' directory
-RUN cp -r packages/nc-gui/.output/public/* /usr/src/deploy/public/ 2>/dev/null || true
+# 7. MANUALLY COPY RUNTIME ASSETS
+# We must copy the 'docker' folder because 'pnpm deploy' ignores it
+RUN cp -r packages/nocodb/docker /usr/src/deploy/docker
+
+# 8. MOVE BUILT GUI FILES
+# NocoDB looks for the frontend in 'docker/public' by default in their Docker setup
+RUN mkdir -p /usr/src/deploy/docker/public
+RUN cp -r packages/nc-gui/.output/public/* /usr/src/deploy/docker/public/ 2>/dev/null || true
 
 ###########
 # Runner (The Slim Production Image)
